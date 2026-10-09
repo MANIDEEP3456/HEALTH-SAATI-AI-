@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthSaathi AI</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;font-family:Arial,sans-serif;
+ background:#f3f7fb;color:#172033
+}
+header{
+ background:linear-gradient(120deg,#087f8c,#2855c5);
+ color:white;padding:28px 20px
+}
+header h1{margin:0 0 10px}
+header p{margin:0;line-height:1.5}
+main{max-width:950px;margin:auto;padding:20px}
+.card{
+ background:white;padding:20px;margin-bottom:18px;
+ border-radius:16px;box-shadow:0 3px 15px #152d4a12
+}
+h2{margin-top:0;font-size:20px}
+button{
+ border:0;border-radius:9px;padding:12px 16px;
+ background:#087f8c;color:white;font-weight:bold;
+ cursor:pointer
+}
+input,select{
+ width:100%;padding:12px;margin:10px 0;
+ border:1px solid #ccd6e0;border-radius:8px
+}
+textarea{
+ width:100%;min-height:120px;padding:12px;
+ border:1px solid #ccd6e0;border-radius:8px
+}
+.muted{color:#617086;font-size:14px;line-height:1.6}
+.result{
+ padding:14px;background:#f1f7fa;border-radius:10px;
+ margin-top:12px;white-space:pre-wrap;overflow-wrap:anywhere
+}
+.badge{
+ display:inline-block;background:#e0f2fe;
+ color:#075985;padding:5px 9px;border-radius:20px;
+ font-size:12px
+}
+footer{text-align:center;padding:25px;color:#64748b}
+</style>
+</head>
+
+<body>
+
+<header>
+  <h1>🩺 HealthSaathi AI</h1>
+  <p>Your personal health information copilot</p>
+  <p>Understand medical documents. Organize your health journey.</p>
+</header>
+
+<main>
+
+<section class="card">
+  <h2>📊 Your Dashboard</h2>
+  <p>Documents analyzed: <strong id="count">0</strong></p>
+  <span class="badge">Personal Health Assistant</span>
+  <p class="muted">
+    This demonstration processes supported text-based documents
+    in your browser. It does not provide a medical diagnosis.
+  </p>
+</section>
+
+<section class="card">
+  <h2>📄 Upload a Medical Document</h2>
+  <input type="file" id="file" accept=".txt,.csv,.pdf">
+  <p class="muted">
+    TXT and CSV files are supported directly. PDF support depends
+    on the browser's built-in PDF text extraction capability and
+    is not guaranteed. Scanned reports and image OCR are not
+    supported in this basic version.
+  </p>
+  <label for="language">Explanation language</label>
+  <select id="language">
+    <option>English</option>
+    <option>Hindi</option>
+    <option>Gujarati</option>
+    <option>Telugu</option>
+  </select>
+  <button onclick="analyze()">Analyze Document</button>
+  <div id="output" class="result" hidden></div>
+</section>
+
+<section class="card">
+  <h2>🧠 Understand a Medical Result</h2>
+  <p class="muted">
+    Enter information from your report. This tool only offers
+    general guidance and cannot determine whether a result is
+    medically normal without the correct reference range.
+  </p>
+
+  <label for="test">Test name</label>
+  <input id="test" placeholder="e.g. Hemoglobin">
+
+  <label for="value">Reported value and unit</label>
+  <input id="value" placeholder="e.g. 12 g/dL">
+
+  <label for="range">Laboratory reference range</label>
+  <input id="range" placeholder="Enter the range printed on your report">
+
+  <button onclick="explain()">Explain Result</button>
+  <div id="explanation" class="result" hidden></div>
+</section>
+
+<section class="card">
+  <h2>📅 Health Timeline</h2>
+  <div id="timeline">
+    <p class="muted">Your analyzed documents will appear here.</p>
+  </div>
+  <button onclick="clearTimeline()">Clear Timeline</button>
+</section>
+
+<section class="card">
+  <h2>🔐 Privacy & Medical Safety</h2>
+  <p class="muted">
+    This is a hackathon prototype, not a medical device or
+    diagnostic service. Verify extracted information against
+    the original report and consult a qualified clinician.
+    Never change medication based on this website alone.
+    Do not upload sensitive patient records to a public demo.
+  </p>
+</section>
+
+</main>
+
+<footer>
+  HealthSaathi AI · Hackathon Prototype
+</footer>
+
+<script>
+let records = [];
+
+async function analyze(){
+  const fileInput = document.getElementById("file");
+  const output = document.getElementById("output");
+
+  if(!fileInput.files.length){
+    alert("Please select a document first.");
+    return;
+  }
+
+  const file = fileInput.files[0];
+
+  if(file.size > 5 * 1024 * 1024){
+    alert("Please choose a file smaller than 5 MB.");
+    return;
+  }
+
+  output.hidden = false;
+  output.textContent = "Reading document...";
+
+  try{
+    let text = "";
+
+    if(file.name.toLowerCase().endsWith(".txt") ||
+       file.name.toLowerCase().endsWith(".csv")){
+      text = await file.text();
+    }else if(file.name.toLowerCase().endsWith(".pdf")){
+      text = "PDF text extraction is not enabled in this basic version. " +
+             "Please upload a TXT or CSV file containing text copied " +
+             "from your report.";
+    }
+
+    if(!text.trim()){
+      output.textContent = "No readable text was found.";
+      return;
+    }
+
+    const entry = {
+      name: file.name,
+      date: new Date().toLocaleString(),
+      text: text.slice(0,10000)
+    };
+
+    records.unshift(entry);
+
+    document.getElementById("count").textContent = records.length;
+
+    output.textContent =
+      "DOCUMENT TEXT EXTRACTED\n\n" +
+      "File: " + file.name + "\n\n" +
+      text.slice(0,6000) +
+      "\n\nThis version extracts text only. It does not yet " +
+      "perform AI medical analysis.";
+
+    renderTimeline();
+
+  }catch(error){
+    output.textContent = "Could not read this file. Try a TXT file.";
+  }
+}
+
+function explain(){
+  const test = document.getElementById("test").value.trim();
+  const value = document.getElementById("value").value.trim();
+  const range = document.getElementById("range").value.trim();
+  const box = document.getElementById("explanation");
+
+  box.hidden = false;
+
+  if(!test || !value || !range){
+    box.textContent =
+      "Enter the test name, reported value, and reference range " +
+      "from the original laboratory report.";
+    return;
+  }
+
+  box.textContent =
+    "Test: " + test + "\n" +
+    "Reported value: " + value + "\n" +
+    "Laboratory reference range: " + range + "\n\n" +
+    "Compare the reported value and units with the laboratory's " +
+    "reference range. This basic version cannot reliably classify " +
+    "the result or determine its clinical significance. Ask a " +
+    "qualified healthcare professional for interpretation.";
+}
+
+function renderTimeline(){
+  const timeline = document.getElementById("timeline");
+  timeline.replaceChildren();
+
+  records.forEach(record => {
+    const article = document.createElement("article");
+    const title = document.createElement("strong");
+    const date = document.createElement("p");
+
+    title.textContent = "📄 " + record.name;
+    date.textContent = "Added: " + record.date;
+    date.className = "muted";
+
+    article.append(title, date);
+    article.style.padding = "12px 0";
+    article.style.borderBottom = "1px solid #e2e8f0";
+
+    timeline.appendChild(article);
+  });
+}
+
+function clearTimeline(){
+  if(confirm("Clear the timeline for this session?")){
+    records = [];
+    document.getElementById("count").textContent = "0";
+    document.getElementById("output").hidden = true;
+    renderTimeline();
+  }
+}
+</script>
+
+</body>
+</html>
